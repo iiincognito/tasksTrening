@@ -14,9 +14,6 @@ type Current struct {
 	convertHistory map[string]int
 }
 
-type History struct {
-}
-
 func NewCurrent() *Current {
 	return &Current{
 		convertHistory: make(map[string]int),
