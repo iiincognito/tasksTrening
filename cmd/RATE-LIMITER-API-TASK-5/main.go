@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strconv"
 	"time"
 )
@@ -68,4 +69,30 @@ func main() {
 	}
 	c.WithLimiter(ctx, req)
 
+}
+
+// TODO ПРИМЕНЕНИЕ ДЛЯ ОГРАНИЧЕНИЯ ЗАПРОСОВ В СЕКУНДУ ДЛЯ MIDDLEWARE
+var tokens chan struct{}
+
+func Init(max int) {
+	tokens = make(chan struct{}, max)
+
+	for i := 0; i < max; i++ {
+		tokens <- struct{}{}
+	}
+}
+
+func Middleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		select {
+		case <-tokens:
+			defer func() {
+				tokens <- struct{}{}
+			}()
+			next.ServeHTTP(w, r)
+		case <-time.After(3 * time.Second):
+			http.Error(w, "server busy", http.StatusTooManyRequests)
+			return
+		}
+	})
 }
